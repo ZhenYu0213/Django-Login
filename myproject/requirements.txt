@@ -1,0 +1,15 @@
+Django
+django-import-export
+django-simpleui
+Pillow
+docutils
+django-mdeditor
+markdown
+Pygments
+mysqlclient
+uwsgi
+django-redis
+redis
+Pillow==7.1.2
+celery
+django-celery-beat

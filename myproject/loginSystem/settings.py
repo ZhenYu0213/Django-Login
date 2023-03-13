@@ -25,6 +25,7 @@ SECRET_KEY = 'django-insecure-o6is653qs$@q&-*q4jzvbk-9#(3vqa4*bh_owy0ioykoj4_ucz
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# ALLOWED_HOSTS = ['your_server_IP', 'your_domain_name']
 ALLOWED_HOSTS = []
 
 
@@ -89,6 +90,27 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#      'default': {
+#          'ENGINE': 'django.db.backends.mysql',
+#          'NAME': 'myproject', # 数据库名
+#          'USER':'dbuser', # 你设置的用户名 - 非root用户
+#          'PASSWORD':'password', # # 换成你自己密码
+#          'HOST': 'db', # 注意：这里使用的是db别名，docker会自动解析成ip
+#          'PORT':'3306', # 端口
+#     }
+#  }
+
+CACHES = {
+     "default": {
+         "BACKEND": "django_redis.cache.RedisCache",
+         "LOCATION": "redis://redis:6379/1", #这里直接使用redis别名作为host ip地址
+         "OPTIONS": {
+             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+             "PASSWORD": "Qwer1234", # 换成你自己密码
+         },
+     }
+ }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -136,3 +158,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 MEDIA_URL = '/media/'
+
+SIMPLEUI_HOME_INFO = False 
+SIMPLEUI_ANALYSIS = False 

@@ -1,32 +1,43 @@
- version: "3.8"
- 
- volumes: #/var/lib/docker/volumes内
-  myproject_db_vol: 
-  myproject_redis_vol: 
-  myproject_media_vol: 
- services:
+version: "3.8"
+volumes: # 自定义数据卷
+  db_vol: #定义数据卷同步存放容器内mysql数据
+  redis_vol: #定义数据卷同步存放redis数据
+  media_vol: #定义数据卷同步存放web项目用户上传到media文件夹的数据
+  static_vol: #定义数据卷同步存放web项目static文件夹的数据
+
+networks: # 自定义网络(默认桥接), 不使用links通信
+  nginx_network:
+    driver: bridge
+  db_network:
+    driver: bridge
+  redis_network: 
+    driver: bridge
+
+services:
   redis:
-    image: redis:5
-    command: redis-server /etc/redis/redis.conf
+    image: redis:latest
+    command: redis-server /etc/redis/redis.conf # 容器启动后启动redis服务器
+    networks:
+      - redis_network
     volumes:
-       - myproject_redis_vol:/data
-       - ./compose/redis/redis.conf:/etc/redis/redis.conf
+      - redis_vol:/data # 通过挂载给redis数据备份
+      - ./compose/redis/redis.conf:/etc/redis/redis.conf # 挂载redis配置文件
     ports:
-       - "6379:6379"
-    restart: always
+      - "6379:6379"
+    restart: always # always表容器运行发生错误时一直重启
+
   db:
-    image: mysql:8.0.32
-    environment:
-       - MYSQL_ROOT_PASSWORD=test
-       - MYSQL_DATABASE=db
-       - MYSQL_USER=test
-       - MYSQL_PASSWORD=test
+    image: mysql
+    env_file:  
+      - ./myproject/.env # 使用了环境变量文件
+    networks:  
+      - db_network
     volumes:
-       - myproject_db_vol:/var/lib/mysql:rw
-       - ./compose/mysql/conf/my.cnf:/etc/mysql/my.cnf
-       - ./compose/mysql/init:/docker-entrypoint-initdb.d/
+      - db_vol:/var/lib/mysql:rw # 挂载数据库数据, 可读可写
+      - ./compose/mysql/conf/my.cnf:/etc/mysql/my.cnf # 挂载配置文件
+      - ./compose/mysql/init:/docker-entrypoint-initdb.d/ # 挂载数据初始化sql脚本
     ports:
-       - "3306:3306"
+      - "3306:3306" # 与配置文件保持一致
     restart: always
   adminer:
     container_name: adminer
@@ -37,39 +48,40 @@
     depends_on: 
       - db
   web:
-    build: .
+    build: ./myproject
     expose:
-       - "8000"
+      - "8000"
     volumes:
-       - .:/var/www/html/myproject
-       - myproject_media_vol:/var/www/html/myproject/media
-       - ./compose/uwsgi:/tmp
-    links:
-       - db
-       - redis
+      - ./myproject:/var/www/html/myproject
+      - static_vol:/var/www/html/myproject/static
+      - media_vol:/var/www/html/myproject/media
+      - ./compose/uwsgi:/tmp
+    networks:
+      - nginx_network
+      - db_network  
+      - redis_network 
     depends_on:
-       - db
-       - redis
-    environment:
-       - DEBUG=False
+      - db
+      - redis
     restart: always
     tty: true
     stdin_open: true
- 
+
   nginx:
     build: ./compose/nginx
     ports:
-       - "80:80"
-       - "443:443"
+      - "80:80"
+      - "443:443"
     expose:
-       - "80"
+      - "80"
     volumes:
-       - ./myproject/static:/usr/share/nginx/html/static
-       #- ./compose/nginx/ssl:/usr/share/nginx/ssl
-       - ./compose/nginx/log:/var/log/nginx
-       - myproject_media_vol:/usr/share/nginx/html/media 
-    links:
-       - web
+      - ./compose/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf # 挂载nginx配置文件
+      - ./compose/nginx/ssl:/usr/share/nginx/ssl # 挂载ssl证书目录
+      - ./compose/nginx/log:/var/log/nginx # 挂载日志
+      - static_vol:/usr/share/nginx/html/static # 挂载静态文件
+      - media_vol:/usr/share/nginx/html/media # 挂载用户上传媒体文件
+    networks:
+      - nginx_network
     depends_on:
-       - web
+      - web
     restart: always
